@@ -1,0 +1,18 @@
+[
+    {
+      "name": "General Data / AI / ML CV",
+      "best_for": ["data science", "machine learning", "AI engineering", "data engineering", "applied AI", "PySpark", "Python"]
+    },
+    {
+      "name": "Computer Vision CV",
+      "best_for": ["computer vision", "image processing", "deep learning", "PyTorch", "TensorFlow", "OpenCV", "industrial inspection", "anomaly detection"]
+    },
+    {
+      "name": "NLP CV",
+      "best_for": ["NLP", "LLMs", "generative AI", "text classification", "embeddings", "semantic search", "RAG", "cross-lingual NLP"]
+    },
+    {
+      "name": "French Data / AI CV",
+      "best_for": ["French job description", "France", "alternance", "stage", "data science", "machine learning", "AI"]
+    }
+  ]

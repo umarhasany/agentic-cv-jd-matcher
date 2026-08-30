@@ -1,0 +1,62 @@
+{
+    "candidate": {
+      "name": "Syed Umar Hasany",
+      "education": "M2 Data and Intelligence for Smart Systems, Université Claude Bernard Lyon 1",
+      "status": "Completed Master's coursework and seeking a 4 to 6 month end-of-studies internship",
+      "languages": ["English C2", "French B1"]
+    },
+    "experience": [
+      {
+        "name": "AI/ML & Data Engineering Assistant",
+        "organization": "Zeeoutsourcing UK",
+        "type": "work experience",
+        "description": "Supported an AI content-processing prototype across text, images, short videos, and metadata. Built Python workflows to extract categories, keywords, summaries, tags, visual features, and quality signals. Applied NLP and machine learning to classify content, compare descriptions with extracted information, and flag missing details or mismatches.",
+        "skills": ["Python", "NLP", "machine learning", "data processing", "content classification", "metadata", "quality evaluation", "AI workflows"]
+      },
+      {
+        "name": "Test Engineer Intern",
+        "organization": "Powersoft Nineteen",
+        "type": "work experience",
+        "description": "Converted software requirements into test plans and test cases. Supported testing, troubleshooting, release checks, documentation, and team coordination.",
+        "skills": ["requirements analysis", "software testing", "QA", "technical documentation", "debugging", "team coordination"]
+      }
+    ],
+    "projects": [
+      {
+        "name": "NYC Taxi Data Analysis",
+        "type": "project",
+        "description": "Analyzed 99,999 valid taxi trips and 9,990 unique taxis using Python, PySpark, Spark SQL, and Pandas. Built Spark SQL queries with window functions and UDFs to calculate utilization and waiting-time metrics. Found 57% mean taxi utilization and a 7.0-minute median next-fare wait after Manhattan drop-offs.",
+        "skills": ["Python", "PySpark", "Apache Spark", "Spark SQL", "Pandas", "big data", "data analysis", "data processing", "ETL", "analytics"]
+      },
+      {
+        "name": "Multilingual Word Embeddings and Alignment",
+        "type": "project",
+        "description": "Built an English-Spanish NLP pipeline to train, compare, and evaluate word representations on approximately 144,215 Tatoeba sentence pairs. Compared 5 representation methods across sparse and dense approaches. Used MUSE and Procrustes Analysis to align Spanish and English word embeddings. Achieved 0.88 water/agua cosine similarity, 0.99 F1 for language identification, and 0.91 F1 for Spanish sentiment classification.",
+        "skills": ["Python", "NLP", "multilingual NLP", "embeddings", "semantic similarity", "cross-lingual NLP", "text classification", "model evaluation"]
+      },
+      {
+        "name": "Zero-Shot Cross-Lingual Emotion Transfer",
+        "type": "project",
+        "description": "Built a zero-shot cross-lingual emotion classification pipeline to transfer learning from English GoEmotions to Indonesian BRIGHTER without Indonesian training examples. Evaluated predictions using accuracy, Macro Precision, Macro Recall, and Macro F1. Best run reached 0.51 accuracy, 0.30 Macro Recall, and 0.26 Macro F1.",
+        "skills": ["Python", "NLP", "transformers", "zero-shot learning", "cross-lingual transfer", "text classification", "emotion classification", "model evaluation"]
+      },
+      {
+        "name": "Neural Style Transfer",
+        "type": "project",
+        "description": "Implemented neural style transfer using a pre-trained VGG19 model, custom content/style loss functions, Gram matrices, and Adam optimization.",
+        "skills": ["Python", "PyTorch", "deep learning", "computer vision", "CNNs", "transfer learning", "model optimization"]
+      },
+      {
+        "name": "Pose-Guided Motion Transfer",
+        "type": "project",
+        "description": "Built a video-based motion transfer pipeline to extract skeletal pose data and generate target-motion video outputs. Trained image-generation workflows using pose-to-image and GAN-based models.",
+        "skills": ["Python", "PyTorch", "OpenCV", "MediaPipe", "computer vision", "video processing", "pose estimation", "GANs"]
+      },
+      {
+        "name": "Fruit Quality Management System",
+        "type": "project",
+        "description": "Led a computer vision fruit-sorting prototype using labeled orange images for fresh vs rotten classification. Used Inception v3, transfer learning, TensorFlow/Keras, preprocessing, validation, and a UI-based classification prototype.",
+        "skills": ["Python", "TensorFlow", "Keras", "computer vision", "image classification", "transfer learning", "model evaluation"]
+      }
+    ]
+  }
