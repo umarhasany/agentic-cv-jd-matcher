@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local uploads / private documents
+*.pdf
+*.docx
+*.xlsx
+
+# Model/cache folders
+models/
+huggingface/
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
