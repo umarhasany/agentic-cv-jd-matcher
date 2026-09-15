@@ -1,236 +1,313 @@
-# Motion Pose Transfer
+# Agentic CV-JD Matcher
 
-This repository implements motion transfer from a source video to a target appearance using three trained models:
+An agentic AI application that compares multiple uploaded CVs against a job description, ranks them using hybrid semantic scoring, retrieves supporting evidence, identifies unsupported skills, and generates a human-reviewable application message.
 
-- ske26-to-result (vanilla network: 26D reduced skeleton vector -> RGB image)
-- skeim-to-result (vanilla network: stick/skeleton image -> RGB image)
-- GAN (conditional GAN: stick/skeleton image -> RGB image, with discriminator)
+The project uses **LangGraph** to manage workflow state, conditional routing, evidence-quality evaluation, and adaptive retrieval.
 
-The provided notebook runs end-to-end in Google Colab: it prepares data, trains each model, and generates result videos.
+## What the App Does
 
-## Demo video
+- Upload multiple CV PDFs
+- Paste a job description
+- Parse the job description into structured information
+- Parse uploaded CVs
+- Rank CVs using hybrid semantic scoring
+- Select the highest-ranked CV
+- Retrieve semantically relevant evidence from the selected CV
+- Evaluate whether the retrieved evidence is strong enough
+- Retry retrieval automatically when evidence is weak
+- Identify supported and missing skills
+- Flag overclaim risks
+- Generate a short human-reviewable application message
+- Display the workflow trace and intermediate decisions
 
-A short demo video (around 2 minutes) is included as part of the submission. It shows:
+## CV Ranking Logic
 
-- unzipping the provided solution code
-- preparing the input videos and skeleton precomputation
-- running inference with an already-trained model to produce an output video
+Each CV receives a hybrid score based on three signals:
 
-(If the grader opens the demo video file, it should be clear which commands were run and what output files were produced.)
+- **55% Semantic Similarity**
+- **35% Skill Overlap**
+- **10% Domain Match**
 
-## Repository and file structure
+The system uses `sentence-transformers/all-MiniLM-L6-v2` to generate embeddings and cosine similarity to compare the meaning of the job description with each CV.
 
-The workflow assumes this layout inside the Colab runtime:
+```text
+Hybrid Score
+=
+0.55 × Semantic Similarity
++
+0.35 × Skill Overlap
++
+0.10 × Domain Match
+```
 
-/content/
-  TP_solution_code_v2.zip
-  tp/
-    DanceDemo.py
-    GenVanillaNN.py
-    GenGAN.py
-    GenNearest.py
-    Skeleton.py
-    (project helper files copied into tp/)
-  tp/data/
-    taichi2.mp4
-    karate1.mp4
-    taichi2/          (frames + skeleton outputs)
-    karate1/          (frames + skeleton outputs)
-    Dance/            (saved model checkpoints)
-    out/              (generated output frames/videos)
+This combines semantic understanding with explicit evidence instead of relying only on keywords.
 
-### About TP_solution_code_v2.zip
+## Semantic Evidence Retrieval
 
-The assignment starter/solution code is packaged as TP_solution_code_v2.zip and is unzipped into /content/tp at the start of the notebook.
+After selecting the best-ranked CV, the system divides it into overlapping text chunks.
 
-In the initial setup cells, the zip is extracted and then a few helper files from the course/project distribution are placed alongside the extracted files (for example VideoSkeleton.py / VideoReader.py / Vec3.py, depending on the distribution you were given). Those helper files are required because:
+Each chunk is embedded and compared against the job description.
 
-- DanceDemo.py and the generators depend on VideoSkeleton / video reading utilities
-- the skeleton code uses vector utilities (Vec3) for joint computations
+Initial retrieval uses:
 
-If those files are missing, you will typically see import errors or runtime errors when trying to load skeletons/images.
+```text
+top_k = 6
+120 words/chunk
+30-word overlap
+```
 
-## Environment
+If the evidence is judged weak, the agent changes its retrieval strategy:
 
-Tested in Google Colab (Python 3.11) with:
+```text
+top_k = 10
+90 words/chunk
+40-word overlap
+```
 
-- PyTorch (newer versions where torch.load defaults to weights_only=True)
-- OpenCV (headless build in Colab; GUI calls like imshow/waitKey are not supported)
+The smaller chunks provide more focused semantic matches, while greater overlap reduces the chance of important information being split across chunk boundaries.
 
-The code was patched to be compatible with Colab’s headless OpenCV and PyTorch’s safer default loading behavior.
+## Why This Is Agentic
 
-## Quickstart (run with trained networks)
+The first version of the project followed a fixed procedural pipeline.
 
-The fastest path is:
+The current version uses a LangGraph `StateGraph` with explicit state, conditional routing, and an adaptive retry loop.
 
-1) Unzip the code to /content/tp
-2) Ensure input videos are placed in /content/tp/data/
-3) Ensure skeleton precomputation files exist (or recompute)
-4) Run DanceDemo.py with the desired generator type
+Current workflow:
 
-### 1) Unzip solution code
+```text
+START
+  ↓
+JD Parser
+  ↓
+Hybrid CV Ranker
+  ↓
+Best CV Selector
+  ↓
+Semantic Evidence Retriever
+  ↓
+Evidence Quality Evaluator
+  ↓
+Is evidence strong enough?
+  ├── Yes → Fit + Risk Checker
+  │
+  └── No → Change retrieval strategy
+              ↓
+          Retrieve again
+              ↓
+          Evaluate again
+              ↓
+          Fit + Risk Checker
+  ↓
+Message Generator
+  ↓
+END
+```
 
-In Colab:
+The agent therefore:
 
-%%bash
-set -e
-mkdir -p /content/tp
-unzip -o /content/TP_solution_code_v2.zip -d /content/tp
-ls -lah /content/tp
+1. Maintains state across multiple processing stages.
+2. Observes the quality of retrieved evidence.
+3. Makes a decision based on that evidence.
+4. Changes its retrieval strategy when necessary.
+5. Retries automatically.
+6. Prevents unsupported claims from being used in the generated message.
 
-### 2) Put videos in the expected location
+The project does not yet claim to be a fully autonomous LLM agent. Instead, agentic capabilities are being added incrementally through explicit state, decisions, branching, adaptation, and guardrails.
 
-The notebook assumes:
+## Evidence Quality Evaluation
 
-/content/tp/data/taichi2.mp4
-/content/tp/data/karate1.mp4
+Retrieved evidence is evaluated using:
+
+- strongest semantic similarity score,
+- average score of the strongest evidence chunks,
+- JD skill coverage.
+
+If evidence is sufficiently strong, the workflow continues.
+
+If it is weak on the first attempt, LangGraph routes execution back through the evidence retriever with different retrieval parameters.
+
+This creates a real:
+
+```text
+observe → decide → adapt → retry
+```
+
+loop.
+
+## Overclaim Protection
+
+The application includes an explicit risk checker.
+
+If a job description requires a skill that is not clearly supported by the selected CV, the system warns against claiming it.
 
 Example:
 
-%%bash
-set -e
-mkdir -p /content/tp/data
-mv /content/taichi2.mp4 /content/tp/data/taichi2.mp4 2>/dev/null || true
-mv /content/karate1.mp4 /content/tp/data/karate1.mp4 2>/dev/null || true
-ls -lah /content/tp/data/*.mp4
+```text
+'anomaly detection' was found in the job description
+but not clearly found in the selected CV.
+Do not claim it directly.
+```
 
-### 3) Precompute skeletons (creates .pkl and frame folders)
+The text matcher uses whole-word and whole-phrase matching to reduce false positives.
 
-If .pkl files do not exist or were corrupted, recompute them:
+For example:
 
-%%bash
-set -e
-cd /content/tp
-python - <<'PY'
-from VideoSkeleton import VideoSkeleton
-import os
+```text
+Git      → matches Git
+GitHub   → does not automatically imply Git experience
+```
 
-for vid in ["data/taichi2.mp4", "data/karate1.mp4"]:
-    base = os.path.splitext(vid)[0]
-    pkl = base + ".pkl"
-    if os.path.exists(pkl):
-        print("Found:", pkl)
-    else:
-        print("Computing:", vid)
-        VideoSkeleton(vid)  # will compute and save pkl
-PY
+## Example Validation
 
-### 4) Generate a result video (inference)
+### Strong-Match Test
 
-DanceDemo.py takes:
+A ROSEN Master Thesis job description focused on:
 
-python DanceDemo.py <src_video> <tgt_video> <gen_type>
+- Machine Learning
+- Deep Learning
+- Computer Vision
+- Python
+- PyTorch
+- TensorFlow
+- Anomaly Detection
 
-Where gen_type matches the notebook:
+produced:
 
-- 2 : Vanilla GenVanillaNN (ske26-to-result OR skeim-to-result depending on GenVanillaNN optSkeOrImage)
-- 3 : GAN (GenGAN)
+```text
+Best CV: CV_latest.pdf
+Hybrid Score: 65
+Semantic Score: 52
+Skill Score: 86
+Domain Score: 60
+```
 
-The notebook patches DanceDemo.py to save outputs to data/out/ (JPG frames and result.mp4), instead of trying to open GUI windows.
+Evidence quality was strong enough on the first attempt:
 
-Example inference run:
+```text
+Skill coverage: 86%
+Retry count: 0
+```
 
-%%bash
-set -e
-cd /content/tp
-rm -rf data/out && mkdir -p data/out
-python DanceDemo.py data/taichi2.mp4 data/karate1.mp4 3
-ls -lah data/out
+The system correctly identified `anomaly detection` as unsupported.
 
-## Training
+### Weak-Match Test
 
-Training is done per target video (appearance). In the notebook, karate1.mp4 is used as the target training set.
+A deliberately mismatched JD requiring:
 
-### A) Train ske26-to-result (vanilla, reduced skeleton vector)
+- Streamlit
+- Git
+- Anomaly Detection
 
-This uses GenVanillaNN with optSkeOrImage = 1.
+produced:
 
-%%bash
-set -e
-cd /content/tp
-python GenVanillaNN.py data/karate1.mp4
+```text
+Skill overlap: 0%
+Skill coverage: 0%
+Retry count: 1
+```
 
-Expected checkpoint:
+The LangGraph workflow automatically triggered the broader evidence-retrieval strategy.
 
-data/Dance/DanceGenVanillaFromSke26.pth
+This validated the adaptive retry branch.
 
-Notes:
-- GUI calls (imshow/waitKey) are disabled for Colab.
-- tensor2image() is patched to convert to uint8 before cv2.cvtColor.
+## Tech Stack
 
-### B) Train skeim-to-result (vanilla, stick image)
+- Python
+- Streamlit
+- LangGraph
+- PyMuPDF
+- sentence-transformers
+- scikit-learn
+- Pandas
+- NumPy
 
-This uses GenVanillaNN with optSkeOrImage = 2.
+## Project Structure
 
-%%bash
-set -e
-cd /content/tp
-python GenVanillaNN.py data/karate1.mp4
+```text
+agentic-cv-jd-matcher/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+├── PROJECT_REPORT.md
+│
+└── src/
+    ├── __init__.py
+    ├── agent.py
+    ├── jd_parser.py
+    ├── cv_parser.py
+    ├── cv_ranker.py
+    ├── cv_evidence_retriever.py
+    └── text_matching.py
+```
 
-Expected checkpoint:
+## How to Run
 
-data/Dance/DanceGenVanillaFromSkeim.pth
+Create a virtual environment:
 
-### C) Train GAN
+```powershell
+python -m venv .venv
+```
 
-%%bash
-set -e
-cd /content/tp
-python GenGAN.py data/karate1.mp4
+Install dependencies:
 
-Expected checkpoints:
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-data/Dance/DanceGenGAN_G.pth
-data/Dance/DanceGenGAN_D.pth
+Run the Streamlit application:
 
-Notes:
-- GenGAN.py is patched to avoid OpenCV GUI calls.
-- Saving is done as state_dict for safer loading.
-- Loading uses torch.load(..., weights_only=False) and/or state_dict loading logic to remain compatible with PyTorch 2.6+ behavior.
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
 
-## What was changed (patch summary)
+## Project Report
 
-The notebook applies targeted patches so the code runs reliably in Colab:
+For a detailed explanation of the architecture, ranking logic, semantic retrieval, LangGraph workflow, testing, bugs fixed, limitations, and planned improvements, see:
 
-1) Removed / disabled OpenCV GUI usage
-   - cv2.imshow, cv2.waitKey, cv2.destroyAllWindows are not supported in Colab’s OpenCV build.
-   - Output is written to disk (JPG previews + MP4 video).
+[PROJECT_REPORT.md](PROJECT_REPORT.md)
 
-2) PyTorch checkpoint loading compatibility
-   - Newer PyTorch defaults torch.load to weights_only=True, which breaks loading full module pickles from older checkpoints.
-   - The code was updated to load safely, preferring state_dict checkpoints and explicitly setting weights_only=False when needed.
+## Current Limitations
 
-3) Robust image type handling for OpenCV conversion
-   - Some generated tensors were converted to numpy float64, causing cv2.cvtColor to throw “Unsupported depth CV_64F”.
-   - tensor2image() was patched to clip/scale and cast to uint8 before calling cv2.cvtColor.
+The current version still has several intentional limitations:
 
-4) Notebook operational fixes
-   - Working directory issues after runtime disconnect were handled by always cd’ing to a valid directory before bash operations.
-   - Skeleton caches (.pkl) were recomputed when empty or inconsistent.
+- JD skill extraction partly relies on manually defined keyword dictionaries.
+- Evidence-quality thresholds are heuristic.
+- The workflow currently retries evidence retrieval only once.
+- If evidence remains weak after retry, the system does not yet reconsider the next-ranked CV.
+- Application-message generation is currently template-based.
+- LLM-based autonomous tool selection has not yet been added.
 
-## Outputs
+## Next Planned Upgrade
 
-After a successful run, outputs are written to:
+The next major improvement is **CV reconsideration**.
 
-- data/out/result.mp4
-- data/out/vis_XXXX.jpg (optional intermediate frames)
+If evidence remains weak after the retrieval retry, the agent will evaluate the next-ranked CV rather than blindly continuing with the first selection.
 
-Three result videos are included with the submission (one per model):
-- ske26-to-result
-- skeim-to-result
-- GAN
+Planned logic:
 
-## Troubleshooting
+```text
+Select best-ranked CV
+        ↓
+Retrieve evidence
+        ↓
+Evidence strong?
+     /       \
+   Yes        No
+    ↓          ↓
+Continue     Retry
+               ↓
+          Still weak?
+             /    \
+           No      Yes
+           ↓        ↓
+       Continue   Try next CV
+                    ↓
+               Strong match?
+                 /      \
+               Yes       No
+                ↓         ↓
+             Use it    Report weak fit
+```
 
-- “cv2.error … function is not implemented … imshow/waitKey”
-  The code must be patched to disable GUI calls and write outputs to disk.
-
-- “Weights only load failed … torch.load”
-  Use state_dict checkpoints or load with weights_only=False only when the checkpoint source is trusted.
-
-- “IndexError: index 0 is out of bounds … size 0”
-  The target .pkl may be empty/corrupted. Delete the target folder and .pkl and recompute skeletons.
-
-- “shell-init: error retrieving current directory”
-  This happens if a directory was deleted while it was the current working directory. Start bash cells with: cd /content
-
+This will allow downstream evidence to challenge the original ranking decision.
